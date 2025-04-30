@@ -345,15 +345,13 @@ module.exports = class Client extends EventEmitter {
       return;
     }
 
-    // 메시지가 올바른 클라이언트의 것인지 확인
-    const bodyData = this._extractBodyData(object);
-    if (bodyData && bodyData.playerId) {
-      // playerId가 있으면 이 정보로 메시지의 대상 확인
-      if (bodyData.playerId !== this._androidId) {
-        console.warn(`[Client ${this._clientId}] Received message intended for ${bodyData.playerId}, ignoring`);
-        return; // 다른 클라이언트를 위한 메시지는 무시
-      }
-    }
+  // 메시지의 body 정보 추출 (디버깅 목적으로 유지)
+  const bodyData = this._extractBodyData(object);
+  if (bodyData && bodyData.playerId) {
+    // 메시지 대상 정보 로깅만 하고 필터링은 하지 않음
+    console.log(`[Client ${this._clientId}] Message target playerId: ${bodyData.playerId}`);
+  
+  }
 
     // 암호화되지 않은 메시지 처리
     if (!this._hasEncryptionInfo(object)) {
