@@ -353,7 +353,7 @@ module.exports = class Client extends EventEmitter {
     // 메시지 대상 정보 로깅만 하고 필터링은 하지 않음
     console.log(`[Client ${this._clientId}] Message target playerId: ${bodyData.playerId}`);
 
-    // 임시 수정 - playerId가 클라이언트의 androidId와 다르면 무시
+      // 임시 수정 - playerId가 클라이언트의 androidId와 다르면 무시
       if (this._steamId && bodyData.playerId !== this._steamId) {
         console.log(`[Client ${this._clientId}] Ignoring message for another player`);
         return;
