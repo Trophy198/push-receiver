@@ -19,7 +19,7 @@ const MAX_RETRY_TIMEOUT = 15;
 
 
 module.exports = class Client extends EventEmitter {
-  constructor(androidId, securityToken, persistentIds) {
+  constructor(androidId, securityToken, persistentIds, steamId = null) {
     super();
     this._androidId = androidId;
     this._securityToken = securityToken;
