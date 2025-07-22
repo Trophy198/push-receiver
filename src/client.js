@@ -349,6 +349,7 @@ module.exports = class Client extends EventEmitter {
 
   // 메시지의 body 정보 추출 (디버깅 목적으로 유지)
   const bodyData = this._extractBodyData(object);
+  console.log('디버깅 용도',bodyData)
   if (bodyData && bodyData.playerId) {
     // 메시지 대상 정보 로깅만 하고 필터링은 하지 않음
     console.log(`[Client ${this._clientId}] Message target playerId: ${bodyData.playerId}`);
