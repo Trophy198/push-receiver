@@ -1,6 +1,5 @@
 const EventEmitter = require('events');
-const path = require('path');
-const { load, BufferReader } = require('protobufjs');
+const { BufferReader } = require('protobufjs');
 const {
   MCS_VERSION_TAG_AND_SIZE,
   MCS_TAG_AND_SIZE,
@@ -26,8 +25,6 @@ const DEBUG = () => {};
 // uncomment the line below to output debug messages
 // const DEBUG = console.log;
 
-let proto = null;
-
 // Parser parses wire data from gcm.
 // This takes the role of WaitForData in the chromium connection handler.
 //
@@ -39,16 +36,10 @@ let proto = null;
 //
 // ref: https://cs.chromium.org/chromium/src/google_apis/gcm/engine/connection_handler_impl.cc?rcl=dc7c41bc0ee5fee0ed269495dde6b8c40df43e40&l=178
 module.exports = class Parser extends EventEmitter {
-  static async init() {
-    if (proto) {
-      return;
-    }
-    proto = await load(path.resolve(__dirname, 'mcs.proto'));
-  }
-
-  constructor(socket) {
+  constructor(socket, proto) {
     super();
     this._socket = socket;
+    this._proto = proto;
     this._state = MCS_VERSION_TAG_AND_SIZE;
     this._data = Buffer.alloc(0);
     this._sizePacketSoFar = 0;
@@ -254,21 +245,21 @@ module.exports = class Parser extends EventEmitter {
   _buildProtobufFromTag(tag) {
     switch (tag) {
       case kHeartbeatPingTag:
-        return proto.lookupType('mcs_proto.HeartbeatPing');
+        return this._proto.lookupType('mcs_proto.HeartbeatPing');
       case kHeartbeatAckTag:
-        return proto.lookupType('mcs_proto.HeartbeatAck');
+        return this._proto.lookupType('mcs_proto.HeartbeatAck');
       case kLoginRequestTag:
-        return proto.lookupType('mcs_proto.LoginRequest');
+        return this._proto.lookupType('mcs_proto.LoginRequest');
       case kLoginResponseTag:
-        return proto.lookupType('mcs_proto.LoginResponse');
+        return this._proto.lookupType('mcs_proto.LoginResponse');
       case kCloseTag:
-        return proto.lookupType('mcs_proto.Close');
+        return this._proto.lookupType('mcs_proto.Close');
       case kIqStanzaTag:
-        return proto.lookupType('mcs_proto.IqStanza');
+        return this._proto.lookupType('mcs_proto.IqStanza');
       case kDataMessageStanzaTag:
-        return proto.lookupType('mcs_proto.DataMessageStanza');
+        return this._proto.lookupType('mcs_proto.DataMessageStanza');
       case kStreamErrorStanzaTag:
-        return proto.lookupType('mcs_proto.StreamErrorStanza');
+        return this._proto.lookupType('mcs_proto.StreamErrorStanza');
       default:
         return null;
     }

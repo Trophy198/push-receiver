@@ -28,6 +28,7 @@ module.exports = class Client extends EventEmitter {
     this._steamId = steamId;
     this._retryCount = 0;
     this._proto = null;
+    this._protoPromise = null;
     this._isDestroyed = false;
     this._clientId = `${androidId.substr(-8)}`;
     
@@ -41,10 +42,11 @@ module.exports = class Client extends EventEmitter {
   }
   
   async _initProto() {
-    if (!this._proto) {
+    if (!this._protoPromise) {
       console.log(`[Client ${this._clientId}] Loading proto definition`);
-      this._proto = await load(path.resolve(__dirname, 'mcs.proto'));
+      this._protoPromise = load(path.resolve(__dirname, 'mcs.proto'));
     }
+    this._proto = await this._protoPromise;
   }
   
   async connect() {
@@ -69,22 +71,8 @@ module.exports = class Client extends EventEmitter {
       console.warn(`[Client ${this._clientId}] Socket closed immediately after creation`);
       return;
     }
-    
-    try {
-      console.log(`[Client ${this._clientId}] Initializing parser`);
-      await Parser.init();
-    } catch (error) {
-      console.error(`[Client ${this._clientId}] Parser initialization failed:`, error.message);
-      this._destroy();
-      throw new Error(`Parser initialization failed: ${error.message}`);
-    }
-    
-    if (!this._socket) {
-      console.warn(`[Client ${this._clientId}] Socket closed during parser initialization`);
-      return;
-    }
-    
-    this._parser = new Parser(this._socket);
+
+    this._parser = new Parser(this._socket, this._proto);
     this._parser.on('message', this._onMessage);
     this._parser.on('error', this._onParserError);
     
@@ -166,27 +154,26 @@ module.exports = class Client extends EventEmitter {
     );
   }
   
-  // TLS 소켓 생성 방식 개선
   _connect() {
+    const secureContext = tls.createSecureContext();
     const options = {
-      host: HOST, 
+      host: HOST,
       port: PORT,
-      // androidId를 세션 ID로 계속 사용 (내부 식별용)
-      session: Buffer.from(this._androidId),
-      // servername을 올바른 서버 이름으로 변경
-      servername: HOST, // 'mtalk.google.com'
-      keepAlive: true
+      servername: HOST,
+      keepAlive: true,
+      secureContext: secureContext,
     };
-    
-    console.log(`[Client ${this._clientId}] Connecting to FCM`);
-    
+
+    console.log(`[Client ${this._clientId}] Connecting to FCM (androidId=${this._androidId})`);
+
     this._socket = tls.connect(options, () => {
-      console.log(`[Client ${this._clientId}] TLS connection established`);
-      // TLS 연결이 수립된 후에 로그인 버퍼 전송
+      const addr = this._socket.localAddress;
+      const port = this._socket.localPort;
+      console.log(`[Client ${this._clientId}] TLS connected. androidId=${this._androidId}, local=${addr}:${port}`);
       this._socket.write(this._loginBuffer());
       this._onSocketConnect();
     });
-    
+
     this._socket.on('close', this._onSocketClose);
     this._socket.on('error', this._onSocketError);
   }
@@ -339,7 +326,7 @@ module.exports = class Client extends EventEmitter {
   
   // 데이터 메시지 처리 메소드 개선
   _onDataMessage(object) {
-    console.log(`[Client ${this._clientId}] Received data message: ${object.persistentId}`);
+    console.log(`[Client ${this._clientId}] DataMessage: persistentId=${object.persistentId}, from=${object.from}, category=${object.category}, registeredUser=${this._androidId}`);
     
     // 이미 처리한 메시지인지 확인
     if (this._persistentIds.includes(object.persistentId)) {
@@ -349,9 +336,7 @@ module.exports = class Client extends EventEmitter {
 
   // 메시지의 body 정보 추출 (디버깅 목적으로 유지)
   const bodyData = this._extractBodyData(object);
-  console.log('current steamId',this._steamId)
   if (bodyData && bodyData.playerId) {
-    // 메시지 대상 정보 로깅만 하고 필터링은 하지 않음
     console.log(`[Client ${this._clientId}] Message target playerId: ${bodyData.playerId}`);
 
       // 임시 수정 - playerId가 클라이언트의 androidId와 다르면 무시

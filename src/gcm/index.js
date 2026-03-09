@@ -16,8 +16,7 @@ const serverKey = toBase64(Buffer.from(fcmKey));
 const REGISTER_URL = 'https://android.clients.google.com/c2dm/register3';
 const CHECKIN_URL = 'https://android.clients.google.com/checkin';
 
-let root;
-let AndroidCheckinResponse;
+let _protoPromise = null;
 
 module.exports = {
   register,
@@ -31,8 +30,9 @@ async function register(androidId, securityToken, appId) {
 }
 
 async function checkIn(androidId, securityToken) {
-  await loadProtoFile();
-  const buffer = getCheckinRequest(androidId, securityToken);
+  const root = await loadProtoFile();
+  const AndroidCheckinResponse = root.lookupType('checkin_proto.AndroidCheckinResponse');
+  const buffer = getCheckinRequest(root, androidId, securityToken);
   const body = await request({
     url     : CHECKIN_URL,
     method  : 'POST',
@@ -48,6 +48,7 @@ async function checkIn(androidId, securityToken) {
     enums : String,
     bytes : String,
   });
+  console.log(`[GCM checkIn] androidId=${androidId}, responseId=${object.androidId}`);
   return object;
 }
 
@@ -91,19 +92,15 @@ async function postRegister({ androidId, securityToken, body, retry = 0 }) {
 }
 
 async function loadProtoFile() {
-  if (root) {
-    return;
+  if (!_protoPromise) {
+    _protoPromise = protobuf.load(path.join(__dirname, 'checkin.proto'));
   }
-  root = await protobuf.load(path.join(__dirname, 'checkin.proto'));
-  return root;
+  return _protoPromise;
 }
 
-function getCheckinRequest(androidId, securityToken) {
+function getCheckinRequest(root, androidId, securityToken) {
   const AndroidCheckinRequest = root.lookupType(
     'checkin_proto.AndroidCheckinRequest'
-  );
-  AndroidCheckinResponse = root.lookupType(
-    'checkin_proto.AndroidCheckinResponse'
   );
   const payload = {
     userSerialNumber : 0,
