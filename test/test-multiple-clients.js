@@ -136,7 +136,7 @@ async function setupClient(credentials) {
   
   try {
     // Create client instance
-    const client = new PushReceiverClient(androidId, securityToken, []);
+    const client = new PushReceiverClient(androidId, securityToken, [], steamId);
     clients.set(steamId, client);
     initCounter(steamId);
     
@@ -180,17 +180,17 @@ async function setupClient(credentials) {
 function testMessageRouting() {
   console.log('\n[Test] Testing message routing with mock messages');
   
-  // Create mock message for first client
+  // Create mock message for first client (playerId = steamId for filtering)
   const mockMessage1 = createMockMessage(
-    credentials.client1.steamId, 
-    credentials.client1.androidId,
+    credentials.client1.steamId,
+    credentials.client1.steamId,
     credentials.senderId
   );
-  
-  // Create mock message for second client
+
+  // Create mock message for second client (playerId = steamId for filtering)
   const mockMessage2 = createMockMessage(
-    credentials.client2.steamId, 
-    credentials.client2.androidId,
+    credentials.client2.steamId,
+    credentials.client2.steamId,
     credentials.senderId
   );
   
