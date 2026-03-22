@@ -48,7 +48,6 @@ async function checkIn(androidId, securityToken) {
     enums : String,
     bytes : String,
   });
-  console.log(`[GCM checkIn] androidId=${androidId}, responseId=${object.androidId}`);
   return object;
 }
 
